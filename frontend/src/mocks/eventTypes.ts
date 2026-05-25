@@ -1,0 +1,16 @@
+import type { EventType } from '../types/api'
+
+export const mockEventTypes: EventType[] = [
+  {
+    id: 'quick',
+    name: 'Быстрая встреча',
+    description: 'Короткая встреча на 15 минут для оперативных вопросов.',
+    duration: 15,
+  },
+  {
+    id: 'full',
+    name: 'Полноценная встреча',
+    description: 'Полноценная встреча на 30 минут для детального обсуждения. Подходит для планирования, ревью и глубоких обсуждений.',
+    duration: 30,
+  },
+]
