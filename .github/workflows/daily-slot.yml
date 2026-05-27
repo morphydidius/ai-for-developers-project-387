@@ -1,0 +1,32 @@
+name: Daily Slot
+on:
+  schedule:
+    - cron: '0 6 * * *'
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+      - name: Start server
+        run: |
+          node server.js &
+          sleep 2
+        working-directory: backend
+      - name: Create slot 9:00-15:00 MSK
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          curl -X POST http://localhost:3001/api/slots \
+            -H "Content-Type: application/json" \
+            -d "{\"startTime\":\"${DATE}T06:00:00.000Z\",\"endTime\":\"${DATE}T12:00:00.000Z\"}"
