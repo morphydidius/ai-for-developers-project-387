@@ -215,7 +215,7 @@ async function handleDelete() {
             'rounded-lg border px-4 py-3 transition-colors',
             bookedSlotIds.has(slot.id)
               ? 'bg-amber-50 border-amber-200'
-              : 'bg-card border',
+              : 'bg-green-50 border-green-200',
           ]"
         >
           <div class="flex items-center justify-between">
