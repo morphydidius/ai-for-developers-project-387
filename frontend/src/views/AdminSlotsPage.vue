@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/api/client'
-import type { Slot } from '@/types/api'
+import type { Slot, Event, EventType } from '@/types/api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,17 +24,35 @@ const maxDateStr = (() => {
 const selectedDate = ref(todayStr)
 
 const allSlots = ref<Slot[]>([])
+const events = ref<Event[]>([])
+const eventTypes = ref<EventType[]>([])
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    allSlots.value = await api.slots.list()
+    const [sls, evs, ets] = await Promise.all([
+      api.slots.list(),
+      api.events.list(),
+      api.eventTypes.list(),
+    ])
+    allSlots.value = sls
+    events.value = evs
+    eventTypes.value = ets
   } catch {
-    // слоты остаются пустыми
+    // данные остаются пустыми
   } finally {
     loading.value = false
   }
 })
+
+const bookedSlotIds = computed(() => new Set(events.value.map((e) => e.slotId)))
+const isDeletingBookedSlot = computed(() =>
+  deletingSlotId.value ? bookedSlotIds.value.has(deletingSlotId.value) : false,
+)
+
+function eventsForSlot(slotId: string): Event[] {
+  return events.value.filter((e) => e.slotId === slotId)
+}
 
 const slotsForDate = computed(() =>
   allSlots.value.filter((s) => s.startTime.slice(0, 10) === selectedDate.value),
@@ -50,6 +68,11 @@ function combineDateTime(dateStr: string, timeStr: string): string {
 function isoToLocalTime(iso: string): string {
   const d = new Date(iso)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function formatTime(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
 // ── Slot dialog (create / edit) ──
@@ -103,7 +126,14 @@ async function handleSubmit() {
       await api.slots.create({ startTime, endTime })
     }
     slotDialogOpen.value = false
-    allSlots.value = await api.slots.list()
+    const [sls, evs, ets] = await Promise.all([
+      api.slots.list(),
+      api.events.list(),
+      api.eventTypes.list(),
+    ])
+    allSlots.value = sls
+    events.value = evs
+    eventTypes.value = ets
   } catch {
     // ошибка
   } finally {
@@ -130,7 +160,14 @@ async function handleDelete() {
   try {
     await api.slots.delete(deletingSlotId.value)
     deleteDialogOpen.value = false
-    allSlots.value = await api.slots.list()
+    const [sls, evs, ets] = await Promise.all([
+      api.slots.list(),
+      api.events.list(),
+      api.eventTypes.list(),
+    ])
+    allSlots.value = sls
+    events.value = evs
+    eventTypes.value = ets
   } catch {
     // ошибка
   } finally {
@@ -174,16 +211,39 @@ async function handleDelete() {
         <div
           v-for="slot in slotsForDate"
           :key="slot.id"
-          class="rounded-lg border bg-card text-card-foreground px-4 py-3 flex items-center justify-between"
+          :class="[
+            'rounded-lg border px-4 py-3 transition-colors',
+            bookedSlotIds.has(slot.id)
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-green-50 border-green-200',
+          ]"
         >
-          <span class="text-sm font-mono tabular-nums">
-            {{ isoToLocalTime(slot.startTime) }} – {{ isoToLocalTime(slot.endTime) }}
-          </span>
-          <div class="flex gap-2">
-            <Button variant="outline" size="sm" @click="openEdit(slot.id)">Редактировать</Button>
-            <Button variant="destructive" size="sm" @click="openDelete(slot.id, slot.startTime)">
-              Удалить
-            </Button>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-mono tabular-nums">
+              {{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}
+              <span v-if="bookedSlotIds.has(slot.id)" :data-testid="`booked-${slot.id}`" class="ml-2 text-xs text-muted-foreground">
+                занято
+              </span>
+            </span>
+            <div class="flex gap-2">
+              <Button variant="outline" size="sm" @click="openEdit(slot.id)">Редактировать</Button>
+              <Button variant="destructive" size="sm" @click="openDelete(slot.id, slot.startTime)">
+                Удалить
+              </Button>
+            </div>
+          </div>
+          <div v-if="bookedSlotIds.has(slot.id)" class="mt-2 space-y-1">
+            <div
+              v-for="ev in eventsForSlot(slot.id)"
+              :key="ev.id"
+              class="text-xs text-muted-foreground pl-2 border-l-2 border-amber-300"
+            >
+              {{ formatTime(ev.startTime) }}–{{ formatTime(ev.endTime) }}
+              <span class="font-medium">{{ ev.guestName }}</span>
+              <span v-if="ev.eventTypeId" class="ml-1">
+                ({{ eventTypes.find(t => t.id === ev.eventTypeId)?.name ?? ev.eventTypeId }})
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -249,7 +309,9 @@ async function handleDelete() {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent class="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Удаление слота</DialogTitle>
+          <DialogTitle :class="isDeletingBookedSlot ? 'text-destructive' : ''">
+            {{ isDeletingBookedSlot ? 'Вы пытаетесь удалить занятый слот!' : 'Удаление слота' }}
+          </DialogTitle>
         </DialogHeader>
         <p class="text-sm text-muted-foreground">Удалить слот {{ deletingSlotLabel }}?</p>
         <DialogFooter class="mt-4 gap-2">
