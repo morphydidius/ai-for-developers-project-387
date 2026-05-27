@@ -46,6 +46,9 @@ onMounted(async () => {
 })
 
 const bookedSlotIds = computed(() => new Set(events.value.map((e) => e.slotId)))
+const isDeletingBookedSlot = computed(() =>
+  deletingSlotId.value ? bookedSlotIds.value.has(deletingSlotId.value) : false,
+)
 
 function eventsForSlot(slotId: string): Event[] {
   return events.value.filter((e) => e.slotId === slotId)
@@ -306,7 +309,9 @@ async function handleDelete() {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent class="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Удаление слота</DialogTitle>
+          <DialogTitle :class="isDeletingBookedSlot ? 'text-destructive' : ''">
+            {{ isDeletingBookedSlot ? 'Вы пытаетесь удалить занятый слот!' : 'Удаление слота' }}
+          </DialogTitle>
         </DialogHeader>
         <p class="text-sm text-muted-foreground">Удалить слот {{ deletingSlotLabel }}?</p>
         <DialogFooter class="mt-4 gap-2">
