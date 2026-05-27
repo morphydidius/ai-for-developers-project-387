@@ -37,8 +37,8 @@ onMounted(async () => {
 
 const bookedSlotIds = computed(() => new Set(events.value.map((e) => e.slotId)))
 
-function getEventForSlot(slotId: string): Event | undefined {
-  return events.value.find((e) => e.slotId === slotId)
+function eventsForSlot(slotId: string): Event[] {
+  return events.value.filter((e) => e.slotId === slotId)
 }
 
 interface DayGroup {
@@ -89,7 +89,7 @@ const dayGroups = computed(() => {
             v-for="slot in group.slots"
             :key="slot.id"
             :class="[
-              'rounded-lg border px-4 py-3 flex items-center justify-between text-sm transition-colors',
+              'rounded-lg border px-4 py-3 text-sm transition-colors',
               bookedSlotIds.has(slot.id)
                 ? 'bg-amber-50 border-amber-200'
                 : 'bg-green-50 border-green-200',
@@ -110,8 +110,15 @@ const dayGroups = computed(() => {
                 {{ bookedSlotIds.has(slot.id) ? 'Занято' : 'Свободно' }}
               </span>
             </div>
-            <div v-if="bookedSlotIds.has(slot.id)" class="text-muted-foreground text-xs">
-              {{ getEventForSlot(slot.id)?.guestName }}
+            <div v-if="bookedSlotIds.has(slot.id)" class="mt-2 space-y-1">
+              <div
+                v-for="ev in eventsForSlot(slot.id)"
+                :key="ev.id"
+                class="text-xs text-muted-foreground pl-2 border-l-2 border-amber-300"
+              >
+                {{ isoToLocalTime(ev.startTime) }}–{{ isoToLocalTime(ev.endTime) }}
+                <span class="font-medium">{{ ev.guestName }}</span>
+              </div>
             </div>
           </div>
         </div>

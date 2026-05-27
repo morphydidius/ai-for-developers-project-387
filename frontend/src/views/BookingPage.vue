@@ -93,6 +93,10 @@ function formatDateLabel(date: Date) {
 
 const bookedSlotIds = computed(() => new Set(events.value.map((e) => e.slotId)))
 
+function eventsForSlot(slotId: string): Event[] {
+  return events.value.filter((e) => e.slotId === slotId)
+}
+
 const slotsForDay = computed(() => {
   if (!selectedDay.value) return []
   const day = localDateStr(selectedDay.value)
@@ -192,21 +196,6 @@ async function submitBooking() {
   }
 }
 
-const daySlotsForSelect = computed(() => {
-  if (!selectedDay.value) return []
-  const day = localDateStr(selectedDay.value)
-  return slots.value.filter((s) => s.startTime.slice(0, 10) === day && !bookedSlotIds.value.has(s.id))
-})
-
-function onSlotSelectChange(val: unknown) {
-  if (typeof val !== 'string') return
-  selectedSlotId.value = val
-  const slot = slots.value.find((s) => s.id === val)
-  if (slot) {
-    customTime.value = isoToLocalTime(slot.startTime)
-  }
-}
-
 function timeMin() {
   return selectedSlot.value ? isoToLocalTime(selectedSlot.value.startTime) : ''
 }
@@ -266,25 +255,47 @@ function timeMax() {
         Нет доступных слотов
       </div>
       <div v-else class="space-y-2">
-        <button
+        <div
           v-for="slot in slotsForDay"
           :key="slot.id"
-          type="button"
-          :data-testid="`slot-${slot.id}`"
-          :disabled="bookedSlotIds.has(slot.id)"
           :class="[
-            'w-full rounded-lg border bg-card text-card-foreground px-4 py-3 text-left text-sm transition-colors',
+            'rounded-lg border px-4 py-3 transition-colors',
             bookedSlotIds.has(slot.id)
-              ? 'opacity-40 cursor-not-allowed line-through'
-              : 'hover:bg-accent cursor-pointer',
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-card border',
           ]"
-          @click="openBooking(slot.id)"
         >
-          {{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}
-          <span v-if="bookedSlotIds.has(slot.id)" :data-testid="`booked-${slot.id}`" class="ml-2 text-xs text-muted-foreground">
-            занято
-          </span>
-        </button>
+          <button
+            type="button"
+            :data-testid="`slot-${slot.id}`"
+            :disabled="bookedSlotIds.has(slot.id)"
+            :class="[
+              'w-full text-left text-sm transition-colors',
+              bookedSlotIds.has(slot.id)
+                ? 'cursor-default'
+                : 'hover:text-primary cursor-pointer',
+            ]"
+            @click="openBooking(slot.id)"
+          >
+            {{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}
+            <span v-if="bookedSlotIds.has(slot.id)" :data-testid="`booked-${slot.id}`" class="ml-2 text-xs text-muted-foreground">
+              занято
+            </span>
+          </button>
+          <div v-if="bookedSlotIds.has(slot.id)" class="mt-2 space-y-1">
+            <div
+              v-for="ev in eventsForSlot(slot.id)"
+              :key="ev.id"
+              class="text-xs text-muted-foreground pl-2 border-l-2 border-amber-300"
+            >
+              {{ formatTime(ev.startTime) }}–{{ formatTime(ev.endTime) }}
+              <span class="font-medium">{{ ev.guestName }}</span>
+              <span v-if="ev.eventTypeId" class="ml-1">
+                ({{ eventTypes.find(t => t.id === ev.eventTypeId)?.name ?? ev.eventTypeId }})
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -306,25 +317,11 @@ function timeMax() {
         </DialogHeader>
 
         <div class="space-y-4">
-          <div class="space-y-1.5">
+          <div class="space-y-1.5" v-if="selectedSlot">
             <Label>Слот</Label>
-            <Select
-              :model-value="selectedSlotId ?? undefined"
-              @update:model-value="onSlotSelectChange"
-            >
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="Выберите слот" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="slot in daySlotsForSelect"
-                  :key="slot.id"
-                  :value="slot.id"
-                >
-                  {{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <p class="text-sm font-mono text-muted-foreground">
+              {{ formatTime(selectedSlot.startTime) }} – {{ formatTime(selectedSlot.endTime) }}
+            </p>
           </div>
 
           <div class="space-y-1.5">

@@ -35,7 +35,7 @@ test.describe('Бронирование встречи', () => {
     }
   })
 
-  test('главная → выбор типа → бронирование', async ({ page }) => {
+  test('главная → выбор типа → бронирование со сплитом слота', async ({ page }) => {
     const ts = todayISO()
 
     // 1. Открыть главную
@@ -68,5 +68,8 @@ test.describe('Бронирование встречи', () => {
 
     // 9. Проверить, что второй слот остался свободным
     await expect(page.getByTestId(`slot-${slotIds[1]}`)).not.toBeDisabled()
+
+    // 10. Проверить сплит: первый слот теперь имеет границы 09:00–09:15 (после сплита)
+    await expect(page.getByTestId(`slot-${slotIds[0]}`)).toContainText('09:00')
   })
 })

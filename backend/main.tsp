@@ -67,6 +67,16 @@ model UpdateEventTypeRequest {
   duration: int32;
 }
 
+model CreateSlotRequest {
+  startTime: utcDateTime;
+  endTime: utcDateTime;
+}
+
+model UpdateSlotRequest {
+  startTime: utcDateTime;
+  endTime: utcDateTime;
+}
+
 model GenerateSlotsRequest {
   startDate: utcDateTime;
   endDate: utcDateTime;
@@ -98,6 +108,18 @@ namespace EventTypes {
 namespace Slots {
   @get
   op list(): Slot[];
+
+  @post
+  op create(@body body: CreateSlotRequest): Slot | ErrorResponse;
+
+  @route("{id}")
+  namespace SlotById {
+    @put
+    op update(@path id: string, @body body: UpdateSlotRequest): Slot | ErrorResponse;
+
+    @delete
+    op delete(@path id: string): void | ErrorResponse;
+  }
 
   @post
   @route("generate")
