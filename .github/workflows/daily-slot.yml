@@ -7,40 +7,10 @@ jobs:
   daily:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: backend
-      - name: Build
-        run: npm run build
-        working-directory: frontend
-      - name: Start server
+      - name: Generate daily slots
         run: |
-          node server.js &
-          sleep 2
-        working-directory: backend
-      - name: Create slot 9:00-15:00 MSK
-        run: |
-          DATE=$(date -u +%Y-%m-%d)
-          curl -X POST http://localhost:3001/api/slots \
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "Generating slots for $TODAY"
+          curl -s -X POST https://ai-for-developers-project-387-tuls.onrender.com/api/slots/generate \
             -H "Content-Type: application/json" \
-            -d "{\"startTime\":\"${DATE}T06:00:00.000Z\",\"endTime\":\"${DATE}T12:00:00.000Z\"}"
-
-      - name: Run Lighthouse
-        run: |
-          npx lighthouse https://ai-for-developers-project-387-tuls.onrender.com \
-            --output=json \
-            --output-path=./lighthouse-report.json \
-            --chrome-flags="--headless --no-sandbox" || true
-
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: lighthouse-report.json
+            -d "{\"startDate\":\"${TODAY}\",\"endDate\":\"${TODAY}\"}"
