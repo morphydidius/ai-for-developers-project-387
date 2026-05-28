@@ -1,7 +1,7 @@
 name: Daily Slot
 on:
   schedule:
-    - cron: '25 9 * * *'
+    - cron: '50 9 * * *'
   workflow_dispatch:
 jobs:
   daily:
@@ -11,34 +11,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm ci
         working-directory: frontend
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: backend
       - name: Build
         run: npm run build
         working-directory: frontend
-      - name: Start server
+      - name: Generate daily slots on production
         run: |
-          node server.js &
-          sleep 2
-        working-directory: backend
-      - name: Create slot 9:00-15:00 MSK
-        run: |
-          DATE=$(date -u +%Y-%m-%d)
-          curl -X POST http://localhost:3001/api/slots \
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "Generating slots for $TODAY"
+          curl -s -X POST https://ai-for-developers-project-387-tuls.onrender.com/api/slots/generate \
             -H "Content-Type: application/json" \
-            -d "{\"startTime\":\"${DATE}T06:00:00.000Z\",\"endTime\":\"${DATE}T12:00:00.000Z\"}"
-
+            -d "{\"startDate\":\"${TODAY}\",\"endDate\":\"${TODAY}\"}"
       - name: Run Lighthouse
         run: |
           npx lighthouse https://ai-for-developers-project-387-tuls.onrender.com \
             --output=json \
             --output-path=./lighthouse-report.json \
             --chrome-flags="--headless --no-sandbox" || true
-
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
