@@ -2,6 +2,7 @@ name: Daily Slot
 on:
   schedule:
     - cron: '0 6 * * *'
+  workflow_dispatch:
 jobs:
   daily:
     runs-on: ubuntu-latest
